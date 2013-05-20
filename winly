@@ -1,1 +1,148 @@
-grub-2.00 for winly build
+#!/bin/sh
+export EFI_ARCH=i386-pc
+allmods=" "
+allmods=$allmods" acpi.mod"
+allmods=$allmods" all_video.mod"
+allmods=$allmods" ata.mod"
+allmods=$allmods" blocklist.mod"
+allmods=$allmods" boot.mod"
+allmods=$allmods" bsd.mod"
+allmods=$allmods" btrfs.mod"
+allmods=$allmods" bufio.mod"
+allmods=$allmods" cat.mod"
+allmods=$allmods" chain.mod"
+allmods=$allmods" cmp.mod"
+allmods=$allmods" cpio_be.mod"
+allmods=$allmods" configfile.mod"
+allmods=$allmods" crypto.mod"
+allmods=$allmods" cryptodisk.mod"
+allmods=$allmods" cpuid.mod"
+allmods=$allmods" crc64.mod"
+allmods=$allmods" cs5536.mod"
+allmods=$allmods" echo.mod"
+allmods=$allmods" ext2.mod"
+allmods=$allmods" fat.mod"
+allmods=$allmods" font.mod"
+allmods=$allmods" gettext.mod"
+allmods=$allmods" gptsync.mod"
+allmods=$allmods" gzio.mod"
+allmods=$allmods" halt.mod"
+allmods=$allmods" help.mod"
+allmods=$allmods" hfs.mod"
+allmods=$allmods" hfsplus.mod"
+allmods=$allmods" iso9660.mod"
+allmods=$allmods" jpeg.mod"
+allmods=$allmods" jfs.mod"
+allmods=$allmods" keylayouts.mod"
+allmods=$allmods" keystatus.mod"
+allmods=$allmods" linux.mod"
+allmods=$allmods" linux16.mod"
+allmods=$allmods" loadenv.mod"
+allmods=$allmods" loopback.mod"
+allmods=$allmods" ls.mod"
+allmods=$allmods" lsmmap.mod"
+allmods=$allmods" lspci.mod"
+allmods=$allmods" lzopio.mod"
+allmods=$allmods" minicmd.mod"
+allmods=$allmods" mmap.mod"
+allmods=$allmods" multiboot.mod"
+allmods=$allmods" newc.mod"
+allmods=$allmods" ntfscomp.mod"
+allmods=$allmods" ntldr.mod"
+allmods=$allmods" ohci.mod"
+allmods=$allmods" pci.mod"
+allmods=$allmods" part_apple.mod"
+allmods=$allmods" part_bsd.mod"
+allmods=$allmods" part_gpt.mod"
+allmods=$allmods" part_msdos.mod"
+allmods=$allmods" part_plan.mod"
+allmods=$allmods" part_sun.mod"
+allmods=$allmods" part_sunpc.mod"
+allmods=$allmods" part_dvh.mod"
+allmods=$allmods" parttool.mod"
+allmods=$allmods" password.mod"
+allmods=$allmods" password_pbkdf2.mod"
+allmods=$allmods" pata.mod"
+allmods=$allmods" play.mod"
+allmods=$allmods" png.mod"
+allmods=$allmods" probe.mod"
+allmods=$allmods" pxe.mod"
+allmods=$allmods" pxechain.mod"
+allmods=$allmods" reboot.mod"
+allmods=$allmods" romfs.mod"
+allmods=$allmods" scsi.mod"
+allmods=$allmods" search.mod"
+allmods=$allmods" search_fs_file.mod"
+allmods=$allmods" search_fs_uuid.mod"
+allmods=$allmods" search_label.mod"
+allmods=$allmods" sendkey.mod"
+allmods=$allmods" sfs.mod"
+allmods=$allmods" sleep.mod"
+allmods=$allmods" tar.mod"
+allmods=$allmods" terminal.mod"
+allmods=$allmods" terminfo.mod"
+allmods=$allmods" test.mod"
+allmods=$allmods" true.mod"
+allmods=$allmods" udf.mod"
+allmods=$allmods" ufs1.mod"
+allmods=$allmods" ufs2.mod"
+allmods=$allmods" uhci.mod"
+allmods=$allmods" usb.mod"
+allmods=$allmods" usb_keyboard.mod"
+allmods=$allmods" usbms.mod"
+allmods=$allmods" vbe.mod"
+allmods=$allmods" vga.mod"
+allmods=$allmods" vga_text.mod"
+allmods=$allmods" video.mod"
+allmods=$allmods" video_bochs.mod"
+allmods=$allmods" video_cirrus.mod"
+allmods=$allmods" video_fb.mod"
+allmods=$allmods" videoinfo.mod"
+allmods=$allmods" xnu.mod"
+allmods=$allmods" xnu_uuid.mod"
+mkdir /tmp
+cp grub-2.00.tar.xz /tmp
+cd /tmp
+xz -d grub-2.00.tar.xz
+tar xvf grub-2.00.tar
+cd grub-2.00
+mkdir bin_pc
+cd bin_pc
+mkdir grub-core
+#cp ../map.mod grub-core
+cp ../grub.cfg grub-core
+../configure --with-platform=pc --target=i386 --prefix=""
+make
+sleep 3
+mkdir -p boot/grub/${EFI_ARCH}
+mkdir -p boot/grub/locale
+cp ../po/zh_CN.mo boot/grub/locale
+cp ../font.pf2 boot/grub
+cp ../grub.cfg boot/grub
+cd grub-core
+rm fs.lst
+cp $allmods *.lst ../boot/grub/${EFI_ARCH}
+cd ..
+find boot | cpio -o -H newc > memdisk.cpio
+mv memdisk.cpio grub-core
+cd grub-core
+../grub-mkimage -O i386-pc -d . -o i386-pc-core.img -m memdisk.cpio -v biosdisk newc blocklist fat iso9660 pxe reiserfs memdisk cpio minicmd part_msdos ext2 ntfs loopback gfxmenu gfxterm reboot normal
+cat lnxboot.img i386-pc-core.img > winlyldr
+cat cdboot.img i386-pc-core.img > winly.bin
+#cat pxeboot.img i386-pc-core.img > winly.pxe
+mv winlyldr /tmp
+mv winly.bin /tmp
+mv winly.pxe /tmp
+rm memdisk.cpio
+cd ..
+make distclean
+echo "winlyldr文件已经生成,在/tmp下"
+#echo "winly.pxe文件已经生成,在/tmp下"
+echo "winly.bin文件已经生成,在/tmp下,制作可启动iso请继续"
+mkdir -p /tmp/iso
+cp -af /tmp/grub-2.00/winly /tmp/iso
+cd /tmp
+cp winly.bin iso
+cd iso
+mkisofs -R -J -no-emul-boot -boot-info-table -boot-load-size 4 -b winly.bin -o /tmp/winly.iso /tmp/iso
+echo "winly.iso文件已经生成,在/tmp下"
